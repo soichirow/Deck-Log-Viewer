@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deck Log Viewer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='12' width='100' height='100' fill='%231a237e'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='white'>D</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Deck Log Viewer</h1>
+      <p class="subtitle">デッキコードからカードリストを取得してExcelに貼り付け</p>
+    </header>
+
+    <div class="search-box">
+      <label for="deck-codes">デッキコード / URL</label>
+      <textarea id="deck-codes" rows="3" placeholder="3XLS, ABC1, XYZ2&#10;https://decklog.bushiroad.com/view/3XLS&#10;URLをそのまま貼り付けてもOK"></textarea>
+      <p class="hint">複数入力可 - カンマ・スペース・改行で区切り / Ctrl+Enter で検索</p>
+      <div class="btn-row">
+        <button id="search-btn" onclick="fetchDecks()">検索</button>
+      </div>
+    </div>
+
+    <div id="error" class="error hidden"></div>
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p>デッキ情報を取得中...</p>
+    </div>
+
+    <div id="deck-info" class="deck-info hidden">
+      <div class="deck-header">
+        <h2 id="deck-name"></h2>
+        <div class="deck-meta">
+          <span class="badge" id="deck-code-display"></span>
+          <span class="badge" id="deck-regulation"></span>
+          <span class="badge" id="deck-title"></span>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <button class="icon-btn" onclick="copyToClipboard('tsv')" title="Excel用にコピー (TSV)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> TSV</button>
+          <button class="icon-btn" onclick="copyToClipboard('csv')" title="CSV形式でコピー"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> CSV</button>
+          <label class="header-toggle"><input type="checkbox" id="include-header" checked> ヘッダー付き</label>
+        </div>
+        <div class="toolbar-group">
+          <button class="icon-btn icon-btn-secondary" onclick="toggleColumnSettings()" title="列の表示・並び替え設定"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg> 列設定</button>
+          <button class="icon-btn icon-btn-secondary" onclick="copyShareUrl()" title="共有URLをコピー"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> 共有URL</button>
+        </div>
+        <span id="copy-status" class="copy-status"></span>
+      </div>
+
+      <div id="column-settings" class="column-settings hidden">
+        <div class="column-settings-header">
+          <strong>表示する列（ドラッグで並び替え）</strong>
+          <button class="reset-btn" onclick="resetColumns()">デフォルトに戻す</button>
+        </div>
+        <ul id="column-list"></ul>
+      </div>
+
+      <table id="deck-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>デッキコード</th>
+            <th>デッキ名</th>
+            <th>区分</th>
+            <th>カードID</th>
+            <th>カード名</th>
+            <th>枚数</th>
+            <th>種類</th>
+            <th>レアリティ</th>
+          </tr>
+        </thead>
+        <tbody id="deck-tbody"></tbody>
+      </table>
+    </div>
+
+    <footer>
+      <p>データ元: <a href="https://decklog.bushiroad.com" target="_blank" rel="noopener">DECK LOG（デッキログ）</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
