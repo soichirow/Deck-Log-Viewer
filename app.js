@@ -37,6 +37,27 @@ const CARD_IMAGE_BASE = {
   13: "https://godzilla-cardgame.com/wordpress/wp-content/images/cardlist/",
 };
 
+// ===== セクション名（ゲームごと） =====
+// p_list / list / sub_list に対応するラベル（Deck Log公式サイトのh3に準拠）
+const SECTION_NAMES = {
+  1:  { p: "ライドデッキ",     main: "デッキ",         sub: "" },              // VG
+  2:  { p: "",                 main: "デッキ",         sub: "" },              // WS
+  3:  { p: "フラッグ・バディ", main: "デッキ",         sub: "ロストデッキ" },  // BF
+  5:  { p: "パートナー",       main: "デッキ",         sub: "" },              // RE
+  6:  { p: "リーダーカード",   main: "メインデッキ",   sub: "エボルヴデッキ" },// SVE
+  7:  { p: "",                 main: "デッキ",         sub: "" },              // BLAU
+  8:  { p: "オーダーデッキ",   main: "メインデッキ",   sub: "" },              // PDO
+  9:  { p: "推しホロメン",     main: "メインデッキ",   sub: "エールデッキ" },  // HOCG
+  10: { p: "",                 main: "デッキ",         sub: "" },              // 五等分
+  11: { p: "",                 main: "メインデッキ",   sub: "エネルギーデッキ" },// LLC
+  12: { p: "",                 main: "デッキ",         sub: "" },              // WSR
+  13: { p: "怪獣デッキ",       main: "メインデッキ",   sub: "" },              // GCG
+};
+
+function getSectionNames(gameTitleId) {
+  return SECTION_NAMES[gameTitleId] || { p: "特殊", main: "メイン", sub: "サブ" };
+}
+
 // ===== 列定義 =====
 const DEFAULT_COLUMNS = [
   { key: "thumb",    label: "画像",        visible: true },
@@ -241,17 +262,18 @@ function renderDecks(deckList) {
   for (const deck of deckList) {
     const deckUrl = getDeckUrl(deck.deck_id);
     const oshiName = getOshiName(deck);
+    const sn = getSectionNames(deck.game_title_id);
     const sections = [
-      { cards: deck.p_list || [], section: "推しホロメン" },
-      { cards: deck.list || [], section: "メイン" },
-      { cards: deck.sub_list || [], section: "エール" },
+      { cards: deck.p_list || [], section: sn.p, type: "p" },
+      { cards: deck.list || [], section: sn.main, type: "main" },
+      { cards: deck.sub_list || [], section: sn.sub, type: "sub" },
     ];
-    for (const { cards, section } of sections) {
+    for (const { cards, section, type } of sections) {
       for (const card of cards) {
         allCardRows.push({
           deckCode: deck.deck_id,
           deckName: deck.title || "",
-          oshiName, deckUrl, section,
+          oshiName, deckUrl, section, sectionType: type,
           cardId: card.card_number || "",
           cardName: card.name || "",
           num: card.num,
@@ -321,7 +343,7 @@ function renderTableRows(rows) {
   let prevDeckCode = null;
   tbody.innerHTML = rows
     .map((r) => {
-      const sectionCls = r.section === "推しホロメン" ? "oshi-row" : r.section === "エール" ? "partner-row" : "";
+      const sectionCls = r.sectionType === "p" ? "oshi-row" : r.sectionType === "sub" ? "partner-row" : "";
       const borderCls = prevDeckCode !== null && r.deckCode !== prevDeckCode ? "deck-border" : "";
       prevDeckCode = r.deckCode;
       const cls = [sectionCls, borderCls].filter(Boolean).join(" ");
