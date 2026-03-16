@@ -35,14 +35,6 @@ https://soichirow.github.io/Deck-Log-Viewer/#6RXE0,3YZP2
 | `style.css` | スタイル |
 | `worker.js` | Cloudflare Worker プロキシ（CORS 回避） |
 
-## プロキシ
-
-DECK LOG API は CORS を許可していないため、Cloudflare Worker 経由でリクエストしています。
-
-```
-GET https://decklog-proxy.card-master-dm.workers.dev?deck_id=XXXX
-```
-
 ## データ元
 
 [DECK LOG（デッキログ）](https://decklog.bushiroad.com/) - 株式会社ブシロード
