@@ -108,6 +108,10 @@ function saveColumnConfig() {
 let columnConfig = loadColumnConfig();
 
 // ===== ページング =====
+const REQUEST_INTERVAL = 500; // リクエスト間隔 (ms) 1〜5件目
+const REQUEST_INTERVAL_SLOW = 1000; // リクエスト間隔 (ms) 6件目以降
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 const DECKS_PER_PAGE = 5;
 let currentPage = 0;
 
@@ -167,7 +171,10 @@ async function fetchDecks() {
 
   const results = [];
   const errors = [];
-  const promises = codes.map(async (code) => {
+  for (let i = 0; i < codes.length; i++) {
+    if (i > 0) await sleep(i >= 5 ? REQUEST_INTERVAL_SLOW : REQUEST_INTERVAL);
+    loadingEl.querySelector("p").textContent = `取得中... (${i + 1}/${codes.length})`;
+    const code = codes[i];
     try {
       const url = `${PROXY_URL}?deck_id=${encodeURIComponent(code)}`;
       const resp = await fetch(url);
@@ -177,15 +184,10 @@ async function fetchDecks() {
         if (Array.isArray(data) && data.length === 0) throw new Error("見つかりません");
         throw new Error("不正なレスポンス");
       }
-      return { code, data, error: null };
+      results.push(data);
     } catch (e) {
-      return { code, data: null, error: e.message };
+      errors.push(`${code}: ${e.message}`);
     }
-  });
-  const settled = await Promise.all(promises);
-  for (const r of settled) {
-    if (r.error) errors.push(`${r.code}: ${r.error}`);
-    else results.push(r.data);
   }
   loadingEl.classList.add("hidden");
   searchBtn.disabled = false;
